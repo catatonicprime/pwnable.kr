@@ -1,7 +1,6 @@
 import angr
 import pwn
 from pwnlib.util.packing import pack
-import os
 
 
 """
@@ -12,11 +11,22 @@ Walk through:
     b. argv[1] must be 20 bytes, or 5x 4 byte ints - say I0-I4 (integers) with constraints
        on each of the bytes for the printable chars in 2.a
     c. sum of 4 byte ints matches value in 'hashcode'
-"""
-# Set the current working directory & solve using the above result.
-os.chdir("/home/col/")
 
-# Load the binary for analysis.
+Example Usage:
+    cd ~; python /tmp/solver.py
+"""
+
+def print_solution(state, ints):
+    # Solve
+    solution = ""
+    for integer in ints:
+        ix = state.solver.eval(integer)
+        solution += pack(ix, 32, 'little', True).decode()
+    print("A solution is: {}".format(solution))
+
+# Load the binary for analysis. We can use any binary because
+# this solver only uses the angr state machine to solve an
+# abstract represenation. 
 project = angr.Project("./col")
 project.loader
 
@@ -31,8 +41,16 @@ for i in range(5):
     isym = state.solver.BVS("I{}".format(i), 32)
     ints.append(isym)
     # Add our printable character constraints for each integer
+    block_ranges = [(0x3a, 0x40), (0x5b, 0x60)]
     for shift in range(4):
-        constraint = isym & (0xFF << (shift * 8)) >= (0x30 << (shift * 8))
+        # Block lists
+        for block_range in block_ranges:
+            for to_block  in range(block_range[0], block_range[1]+1):
+                constraint = isym & (0xFF << (shift * 8)) != (to_block << (shift * 8))
+                constraints.append(constraint)
+
+        # Allowed list
+        constraint = isym & (0xFF << (shift * 8)) >= (0x4a << (shift * 8))
         constraints.append(constraint)
         constraint = isym & (0xFF << (shift * 8)) <= (0x7a << (shift * 8))
         constraints.append(constraint)
@@ -46,12 +64,9 @@ constraints.append(prob)
 for constraint in constraints:
     state.solver.add(constraint)
 
-# Solve
-solution = ''
-for integer in ints:
-    ix = state.solver.eval(integer)
-    solution += pack(ix, 32, 'little', True)
-print("A solution is: {}".format(solution))
+print_solution(state, ints)
 
-p = pwn.process(["./col", solution])
-print(p.recvall())
+constraints.append(constraint)
+
+# p = pwn.process(["./col", solution])
+# print(p.recvall())
