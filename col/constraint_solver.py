@@ -44,6 +44,16 @@ for i in range(5):
     block_ranges = [(0x3a, 0x40), (0x5b, 0x60)]
     for shift in range(4):
         # Block lists
+        # Something interesting to me happens here... 
+        # I'm not sure you can add a block using ranges.
+        # I think you must enumerate them?
+        # m, n are ordered; m is always the "lesser" of the two values.
+        #   [set to allow]m[set to block]n[set to allow]: constraint > n | constraint <= m, the | requires two (contradictory) constraints
+        # You cannot set a value to be both bigger than n AND lesser or equal to m as m is always ther lesser of m & n.
+        # Perhaps the inverse is better:
+        #   [set to block]m[set to allow]n[set to block]: constraint <= n & constraint > m, this works in this scenario, but consider
+        # It breaks down if you add another allowd block at the end. Feel like
+        #  there's probably some simple set math that demonstrates this.
         for block_range in block_ranges:
             for to_block  in range(block_range[0], block_range[1]+1):
                 constraint = isym & (0xFF << (shift * 8)) != (to_block << (shift * 8))
