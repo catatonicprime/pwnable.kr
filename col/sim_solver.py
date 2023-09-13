@@ -16,47 +16,37 @@ Walk through:
 # Load the binary for analysis.
 proj = angr.Project("./col")
 proj.loader
-cfg = proj.analyses.CFGEmulated()
-main = cfg.kb.functions["main"]
 
 # Establish a state for solving
 passcode = claripy.BVS('passcode', 20*8) # Create 20 bytes of bitvector
-# state = proj.factory.entry_state(addr=main.addr, args=['col', passcode])
-state = proj.factory.entry_state(addr=main.addr, args=['./col', passcode])
+state = proj.factory.full_init_state(args=['./col', passcode])
 
 constraints = []
-
 constraints.append(state.posix.argc == 0x02)
-known = b'nXPtnlNkZbRmJjqzlxzZ'
-for i in range(7):
-    low = i * 8
-    high = low + 7
-    constraints.append(passcode[high:low] == known[i])
 
-
+# Expected constraints on inputs to ensure alpha-only characters are used.
 block_ranges = [(0x3a, 0x40), (0x5b, 0x60)]
-for i in range(20):
-    if i == 19:
-        constraints.append(passcode[:i*8] >= 0x4a)
-        constraints.append(passcode[:i*8] <= 0x7a)
-        for block_range in block_ranges:
-            for to_block  in range(block_range[0], block_range[1]+1):
-                constraints.append(passcode[:i*8] != to_block)
-    else:
-        constraints.append(passcode[i*8+8:i*8] >= 0x4a)
-        constraints.append(passcode[i*8+8:i*8] <= 0x7a)
-        for block_range in block_ranges:
-            for to_block  in range(block_range[0], block_range[1]+1):
-                constraints.append(passcode[i*8+8:i*8] != to_block)
+for byte in passcode.chop(bits=8):
+    constraints.append(byte >= 0x4a)
+    constraints.append(byte <= 0x7a)
+    for block_range in block_ranges:
+        for to_block  in range(block_range[0], block_range[1]+1):
+            constraints.append(byte != to_block)
 
+# Add all the constraints to the solver.
 for constraint in constraints:
     state.solver.add(constraint)
 
+# Create a simulation mamanger & find a path to the target.
 simgr = proj.factory.simgr(state)
-
 simgr.explore(find=[0x0804856e], avoid=[0x08048581, 0x08048508, 0x08048540])
 
-print("Length simgr.found: {}".format(len(simgr.found)))
+pathcount = len(simgr.found)
+print("Length simgr.found: {}".format(pathcount))
+if pathcount == 0:
+    exit()
+
+# Show the solution!
 solution = simgr.found[0]
 arg1 = solution.solver.eval(passcode, cast_to=bytes)
 print(arg1)
