@@ -27,9 +27,11 @@ state = proj.factory.entry_state(addr=main.addr, args=['./col', passcode])
 constraints = []
 
 constraints.append(state.posix.argc == 0x02)
-# constraints.append(passcode[8:0] == 0x62)
-# constraints.append(passcode[16:8] == 0x78)
-# constraints.append(passcode[24:16] == 0x4a)
+known = b'nXPtnlNkZbRmJjqzlxzZ'
+for i in range(7):
+    low = i * 8
+    high = low + 7
+    constraints.append(passcode[high:low] == known[i])
 
 
 block_ranges = [(0x3a, 0x40), (0x5b, 0x60)]
