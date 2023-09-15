@@ -41,7 +41,7 @@ for i in range(5):
     isym = state.solver.BVS("I{}".format(i), 32)
     ints.append(isym)
     # Add our printable character constraints for each integer
-    block_ranges = [(0x3a, 0x40), (0x5b, 0x60)]
+    block_ranges = [(0x3a, 0x41), (0x5b, 0x61)]
     for shift in range(4):
         # Block lists
         # Something interesting to me happens here... 
@@ -55,7 +55,7 @@ for i in range(5):
         # It breaks down if you add another allowd block at the end. Feel like
         #  there's probably some simple set math that demonstrates this.
         for block_range in block_ranges:
-            for to_block  in range(block_range[0], block_range[1]+1):
+            for to_block  in range(block_range[0], block_range[1]):
                 constraint = isym & (0xFF << (shift * 8)) != (to_block << (shift * 8))
                 constraints.append(constraint)
 
