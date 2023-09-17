@@ -14,20 +14,18 @@ Walk through:
 """
 
 # Load the binary for analysis.
-proj = angr.Project("./fd")
+proj = angr.Project("./files/fd")
 proj.loader
 # cfg = proj.analyses.CFGEmulated()
 # start = cfg.functions['_start']
 
 # Establish a state for solving
-passcode = claripy.BVS('passcode', 4*8) 
-password = 'LETMEWIN\n'
-letmewin = claripy.BVV(password, len(password)*8)
+passcode = claripy.BVS('passcode', 4*8)
 
-state = proj.factory.full_init_state(args=['./col', passcode], stdin=angr.SimFileStream(name='stdin', content=letmewin, has_end=False)) # This works too!
+state = proj.factory.full_init_state(args=['./fd', passcode])
 
 constraints = []
-constraints.append(passcode.chop(bits=8)[3] == 0x30)
+# constraints.append(passcode.chop(bits=8)[3] == 0x30)
 
 # Add constraints on inputs to ensure alpha-only characters are used.
 # for byte in passcode.chop(bits=8):
@@ -50,6 +48,9 @@ if pathcount == 0:
 # Show the solution!
 solution = simgr.found[0]
 print(solution.solver.eval(passcode, cast_to=bytes))
+simfile = solution.posix.get_fd(3)
+data, actual_size, new_pos = simfile.file.read(0, simfile.file.size)
+print(solution.solver.eval(data, cast_to=bytes))
 
 
 # Create a simulation mamanger & find a path to the target.
