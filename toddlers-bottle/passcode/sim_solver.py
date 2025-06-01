@@ -20,7 +20,7 @@ cfg = proj.analyses.CFGEmulated()
 target_func = cfg.functions['login']
 
 # Establish a state for solving
-codes = claripy.BVS('stdin', 20*8) # Create 0 bytes of bitvector
+codes = claripy.BVS('stdin', 20*8) # Create 20 bytes of bitvector
 
 
 state = proj.factory.entry_state(addr=target_func.addr, args=[], stdin=angr.SimFileStream(name='stdin', content=codes, has_end=False)) # This works too!

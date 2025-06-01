@@ -27,7 +27,7 @@ letmewin = claripy.BVV(password, len(password)*8)
 state = proj.factory.full_init_state(args=['./col', passcode], stdin=angr.SimFileStream(name='stdin', content=letmewin, has_end=False)) # This works too!
 
 constraints = []
-constraints.append(passcode.chop(bits=8)[3] == 0x30)
+# constraints.append(passcode.chop(bits=8)[3] == 0x30)
 
 # Add constraints on inputs to ensure alpha-only characters are used.
 # for byte in passcode.chop(bits=8):
