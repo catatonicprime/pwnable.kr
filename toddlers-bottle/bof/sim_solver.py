@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import angr
 import claripy
 import pwn
@@ -6,8 +8,6 @@ import argparse
 parser = argparse.ArgumentParser(description="Select a filename.")
 parser.add_argument("filename", type=str, help="The name of the file to process")
 args = parser.parse_args()
-
-options = parser.parse_args()
 
 # Load the binary for analysis.
 proj = angr.Project(f'{args.filename}', auto_load_libs=False)
@@ -34,7 +34,8 @@ if pathcount == 0:
 solution = simgr.found[0]
 
 # Trim up the stdin buffer
-buffer = solution.posix.dumps(0)[:buffer.find(pwn.p32(0xcafebabe))+4] + b'\n'
+buffer = solution.posix.dumps(0)
+buffer = buffer[:buffer.find(pwn.p32(0xcafebabe))+4] + b'\n'
 
 # Trim out the unused buffer for the exploit
 print(f'# Copy this solution python to a python session/file on the remote')
