@@ -1,15 +1,18 @@
+#!/usr/bin/env python
+
 import angr
 import claripy
 from pwnlib.util.packing import pack, flat
 import argparse
 
-parser = argparse.ArgumentParser(prog='sim_solver.py', description='Simulation Solver for "col" on pwnable.kr')
+parser = argparse.ArgumentParser(description='Configure analysis')
+parser.add_argument('filename', type=str, help='The name of the file to process')
 parser.add_argument('-a', '--alpha-only',
                     dest='alpha_only',
                     action=argparse.BooleanOptionalAction,
                     type=bool,
                     help='limit solutions to upper/lower case letters only')
-options = parser.parse_args()
+args = parser.parse_args()
 
 
 """
@@ -23,20 +26,19 @@ Walk through:
 """
 
 # Load the binary for analysis.
-proj = angr.Project("./col")
+proj = angr.Project(f'{args.filename}', auto_load_libs=False)
 proj.loader
 cfg = proj.analyses.CFGEmulated()
 start = cfg.functions['_start']
 
 # Establish a state for solving
 passcode = claripy.BVS('passcode', 20*8) # Create 20 bytes of bitvector
-# state = proj.factory.full_init_state(args=['./col', passcode]) # This works too!
-state = proj.factory.entry_state(addr=start.addr, args=['./col', passcode])
+state = proj.factory.entry_state(addr=start.addr, args=[f'{args.filename}', passcode])
 
 constraints = []
 constraints.append(state.posix.argc == 0x02)
 
-if options.alpha_only:
+if args.alpha_only:
     # Add constraints on inputs to ensure alpha-only characters are used.
     for byte in passcode.chop(bits=8):
         constraints.append(byte >= 0x41)
@@ -54,7 +56,8 @@ for constraint in constraints:
 
 # Create a simulation mamanger & find a path to the target.
 simgr = proj.factory.simgr(state)
-simgr.explore(find=[0x0804856e], avoid=[0x08048581, 0x08048508, 0x08048540])
+main = cfg.functions['main'].addr
+simgr.explore(find=[main+151], avoid=[main+37, main+96, main+201])
 
 pathcount = len(simgr.found)
 print("Length simgr.found: {}".format(pathcount))

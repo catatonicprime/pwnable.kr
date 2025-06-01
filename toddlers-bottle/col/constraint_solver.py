@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import angr
 import pwn
 from pwnlib.util.packing import pack
