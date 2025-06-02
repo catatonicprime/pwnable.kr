@@ -49,8 +49,17 @@ if len(simgr.found) == 0:
 
 found = simgr.found[0]
 
-# Constrain the fd memory location to be 0 for that state
-found.add_constraints(found.memory.load(found.regs.ebp.args[0] - 0x1c, 2) == 0)# "push DWORD PTR [ebp-0x1c]" immediately prior to read call
+# Constrain the first argument to read to be 0 based on calling convention used:
+read_convention = [func.calling_convention for addr, func in cfg.kb.functions.items() if 'read' == func.name and not func.is_plt][0]
+if isinstance(read_convention, angr.calling_conventions.SimCCSystemVAMD64):
+    # first argument is stored in RDI
+    found.add_constraints(found.regs.rdi == 0)
+elif isinstance(read_convention, angr.calling_conventions.SimCCCdecl):
+    # first argument is stored on stack
+    found.add_constraints(found.memory.load(found.regs.ebp.args[0] - 0x1c, 2) == 0)# "push DWORD PTR [ebp-0x1c]" immediately prior to read call
+else:
+    print('Unknown calling convention, you\'re on your own!')
+    exit(-2)
 
 simgr.explore(find=read_check)
 
