@@ -14,7 +14,6 @@ parser.add_argument('-a', '--alpha-only',
                     help='limit solutions to upper/lower case letters only')
 args = parser.parse_args()
 
-
 """
 Walk through:
 1. Review ~/col.c
@@ -22,7 +21,7 @@ Walk through:
     a. printable chars preferable (for easy typing), say between 0x30 and 0x7a
     b. argv[1] must be 20 bytes, or 160 bits
     c. sum of 4 byte ints matches value in 'hashcode'
-3. Try using the simulator to explore/find the path.
+3. Try using the simulator to explore/find the path to system
 """
 
 # Load the binary for analysis.
@@ -30,6 +29,12 @@ proj = angr.Project(f'{args.filename}', auto_load_libs=False)
 proj.loader
 cfg = proj.analyses.CFGEmulated()
 start = cfg.functions['_start']
+system_addr = [addr for addr, func in cfg.kb.functions.items() if 'system' == func.name and func.is_plt][0]
+
+def system_check(state):
+    if state.ip.args[0] == system_addr:
+        return True
+    return False
 
 # Establish a state for solving
 passcode = claripy.BVS('passcode', 20*8) # Create 20 bytes of bitvector
@@ -57,7 +62,7 @@ for constraint in constraints:
 # Create a simulation mamanger & find a path to the target.
 simgr = proj.factory.simgr(state)
 main = cfg.functions['main'].addr
-simgr.explore(find=[main+151], avoid=[main+37, main+96, main+201])
+simgr.explore(find=system_check)
 
 pathcount = len(simgr.found)
 print("Length simgr.found: {}".format(pathcount))
