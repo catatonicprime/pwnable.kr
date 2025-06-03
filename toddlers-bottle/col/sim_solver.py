@@ -61,7 +61,6 @@ for constraint in constraints:
 
 # Create a simulation mamanger & find a path to the target.
 simgr = proj.factory.simgr(state)
-main = cfg.functions['main'].addr
 simgr.explore(find=system_check)
 
 pathcount = len(simgr.found)
