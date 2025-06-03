@@ -11,20 +11,24 @@ args = parser.parse_args()
 
 # Load the binary for analysis.
 proj = angr.Project(f'{args.filename}', auto_load_libs=False)
+
 proj.loader
 
 cfg = proj.analyses.CFGEmulated()
-start = cfg.functions['main']
+system_addr = [addr for addr, func in cfg.kb.functions.items() if 'system' == func.name and func.is_plt][0]
+def system_check(state):
+    if state.ip.args[0] == system_addr:
+        return True
+    return False
 
 # Establish a state for solving
-state = proj.factory.entry_state(addr=start.addr, args=[f'{args.filename}'])
+state = proj.factory.full_init_state()
 
 # Create a simulation mamanger & find a path to the target.
 simgr = proj.factory.simgr(state)
 
 # Setup our target
-faddr = cfg.functions['main'].addr
-simgr.explore(find=[faddr+88], avoid=[faddr+166])
+simgr.explore(find=system_check)
 
 pathcount = len(simgr.found)
 print("Length simgr.found: {}".format(pathcount))
