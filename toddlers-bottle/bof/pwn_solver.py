@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # Copy to pwnable.kr /tmp/ somewhere
 # ???
