@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Lotto looks like a failure to rate limit, there is a commented out sleep(1)
 # So, pick some random bytes, then hammer it till you make it =)
 
@@ -17,7 +18,6 @@ myluck = b'\x01\x01\x01\x01\x01\x01'
 attempt_count = 0
 
 p = pwn.process(f"{args.filename}")
-#p = pwn.process('./lotto')
 while(True):
     attempt_count += 1
     p.send(b'1\n')
